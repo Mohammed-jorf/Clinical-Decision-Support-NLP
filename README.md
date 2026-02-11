@@ -20,10 +20,10 @@ The project benchmarks **Classical Machine Learning** against **Domain-Specific 
 
 ### 📈 Visualizations
 #### Confusion Matrix (BioBERT)
-![Confusion Matrix](results/confusion_matrix.png)
-
+![Confusion Matrix](/Users/mohammedjorf/Downloads/confusion_matrix_biobert-Copy1.png)
+/Users/mohammedjorf/Downloads/confusion_matrix_biobert-Copy1.png
 #### Training Loss Convergence
-![Loss Curve](results/loss_curve.png)
+![Loss Curve](/Users/mohammedjorf/Downloads/accuracy_comparison.png)
 
 ### 🛠️ Installation & Usage
 ```bash
