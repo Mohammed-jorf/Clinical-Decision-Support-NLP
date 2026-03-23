@@ -29,6 +29,20 @@ Key findings reveal that robust classical baselines remain competitive with tran
 
 ---
 
+## Visualizations
+
+<div align="center">
+
+**Macro-F1 Comparison — Gretel→Kaggle Transfer**
+![Model Comparison](results/macro_f1_gretel_kaggle.png)
+
+**Gretel Dataset — 22-Class Train/Test Distribution**
+![Gretel Dataset Split](results/gretel_dataset_split.png)
+
+</div>
+
+---
+
 ## Results Summary
 
 ### In-Domain Performance (Kaggle & Gretel)
@@ -74,29 +88,31 @@ Key findings reveal that robust classical baselines remain competitive with tran
 ```
 Clinical-Decision-Support-NLP/
 │
-├── notebooks/                  # Jupyter notebooks for experiments
-│   ├── 01_data_preprocessing.ipynb
-│   ├── 02_classical_baselines.ipynb
-│   ├── 03_biobert_finetuning.ipynb
-│   ├── 04_clinicalbert_finetuning.ipynb
-│   ├── 05_optimizer_comparison.ipynb
-│   └── 06_cross_domain_evaluation.ipynb
+├── src/                              # Reusable Python modules
+│   ├── __init__.py
+│   ├── preprocessing.py              # Data loading, cleaning, label harmonization
+│   ├── classical_models.py           # LR, SVM, RF pipelines + experiment runner
+│   └── evaluation.py                 # Metrics: macro-F1, ECE, calibration, AURC
 │
-├── src/                        # Reusable Python modules
-│   ├── preprocessing.py        # Text cleaning, tokenization, n-gram extraction
-│   ├── classical_models.py     # LR, SVM, RF training and evaluation
-│   ├── transformer_models.py   # BioBERT / ClinicalBERT fine-tuning
-│   ├── evaluation.py           # Metrics: macro-F1, calibration, ECE
-│   └── utils.py                # Dataset loaders, label harmonization
+├── scripts/                          # Standalone experiment scripts
+│   ├── optimizer_comparison.py       # AdamW vs AdamP comparison (Table 9)
+│   ├── tecblic_finetuning.py         # BioBERT on TecBlic → 98.7% accuracy
+│   └── biobert_experiments.py        # Extended BioBERT framework (all configs)
 │
-├── results/                    # Output figures and metrics
-│   ├── accuracy_comparison.png
-│   ├── confusion_matrix_biobert.png
-│   └── optimizer_comparison.png
+├── results/                          # Output figures and metrics
+│   ├── macro_f1_gretel_kaggle.png    # Model comparison chart (Gretel→Kaggle)
+│   ├── gretel_dataset_split.png      # Gretel 22-class train/test distribution
+│   ├── gretel_class_distribution.png # Full Gretel class distribution
+│   └── classical_results.csv         # Saved experiment results
 │
-├── requirements.txt            # Python dependencies
+├── data/                             # Data directory (CSVs not committed — see below)
+│   └── README_data.md
+│
+├── requirements.txt                  # Python dependencies
 └── README.md
 ```
+
+> **Note on data:** Raw and canonicalized CSV files are not committed to this repo due to size. Download instructions are in the Datasets section below.
 
 ---
 
@@ -220,18 +236,51 @@ jupyter
 
 ## Reproducing Results
 
+### 1. Prepare data
+
+```python
+from src.preprocessing import load_and_harmonize
+
+# Expects data/symptom2disease.csv, data/gretel_train.csv, data/gretel_test.csv
+kaggle22, gretel_train22, gretel_test22 = load_and_harmonize("data/")
+# Saves kaggle_22_canon.csv, gretel_train_22_canon.csv, gretel_test_22_canon.csv
+```
+
+### 2. Classical baselines (macro-F1 ≈ 0.96–0.97)
+
+```python
+from src.classical_models import run_classical_experiments
+results = run_classical_experiments(kaggle22, gretel_train22, gretel_test22)
+```
+
+### 3. Optimizer comparison (AdamW vs AdamP)
+
 ```bash
-# 1. Preprocess datasets
-jupyter nbconvert --to notebook --execute notebooks/01_data_preprocessing.ipynb
+python scripts/optimizer_comparison.py \
+    --data-dir data/ \
+    --model-name dmis-lab/biobert-v1.1 \
+    --epochs 20 \
+    --output results/optimizer_comparison.csv
+```
 
-# 2. Run classical baselines
-jupyter nbconvert --to notebook --execute notebooks/02_classical_baselines.ipynb
+### 4. TecBlic fine-tuning (98.7% accuracy)
 
-# 3. Fine-tune BioBERT (GPU recommended)
-jupyter nbconvert --to notebook --execute notebooks/03_biobert_finetuning.ipynb
+```bash
+python scripts/tecblic_finetuning.py \
+    --model-name dmis-lab/biobert-base-cased-v1.2 \
+    --epochs 5 \
+    --output-dir results/tecblic/
+```
 
-# 4. Cross-domain evaluation
-jupyter nbconvert --to notebook --execute notebooks/06_cross_domain_evaluation.ipynb
+### 5. Extended BioBERT experiments
+
+```bash
+python scripts/biobert_experiments.py \
+    --data-dir data/ \
+    --experiment kaggle_cv \
+    --optimizer adamp \
+    --scheduler cosine \
+    --epochs 20
 ```
 
 > ⚠️ **Note:** Transformer fine-tuning requires a GPU. All experiments were run with a CUDA-enabled GPU. CPU-only runs are supported but will be significantly slower.
